@@ -1,9 +1,12 @@
 // import dependencies
+import env from "dotenv";
 import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
 import bcrypt from "bcrypt";
-import env from "dotenv";
+import session from "express-session";
+import passport from "passport";
+import { Strategy } from "passport-local";
 
 // init global variables
 const app = express();
@@ -22,9 +25,25 @@ const db = new pg.Client({
 // init maintenance
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
+
+app.use(
+    session({
+        secret: "TOPSECRETWORD",
+        resave: false,
+        saveUninitialized: true,
+        cookie: {
+            maxAge: 1000 * 60 * 60, // one hour
+        },
+    })
+);
+app.use(passport.initialize());
+app.use(passport.session());
+
 db.connect();
 
-// web get routes
+/*
+ * web get routes
+ */
 app.get("/", (req, res) => {
     res.render("home.ejs");
 });
@@ -37,7 +56,19 @@ app.get("/register", (req, res) => {
     res.render("register.ejs");
 });
 
-// web get routes
+app.get("/secrets", (req, res) => {
+    // check for authenticated user
+    console.log(req.user);
+    if (req.isAuthenticated()) {
+        res.render("secrets.ejs");
+    } else {
+        res.render("/login");
+    }
+});
+
+/*
+ * web post routes
+ */
 
 // register users
 app.post("/register", async (req, res) => {
@@ -54,12 +85,15 @@ app.post("/register", async (req, res) => {
             // password hashing
             bcrypt.hash(password, saltRounds, async (error, hash) => {
                 if (error) {
-                    console.log(error);
+                    console.log("Error hashing password: ", error);
                 }
                 // add email and hash to db
-                const result = await db.query("INSERT INTO users(email, password) VALUES($1, $2)", [email, hash]);
-                console.log(result);
-                res.render("secrets.ejs");
+                const result = await db.query("INSERT INTO users(email, password) VALUES($1, $2) RETURNING *", [email, hash]);
+                const user = result.rows[0];
+                req.login(user, (error) => {
+                    console.log(error);
+                    res.redirect("/secrets");
+                });
             });
         }
     } catch (e) {
@@ -68,36 +102,58 @@ app.post("/register", async (req, res) => {
 });
 
 // log in users
-app.post("/login", async (req, res) => {
-    const email = req.body.username;
-    const loginPassword = req.body.password;
+app.post(
+    "/login",
+    // middleware remembers logged in users
+    passport.authenticate("local", {
+        successRedirect: "/secrets",
+        failureRedirect: "/login",
+    })
+);
 
-    try {
-        const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+// verifies user in session - executed on .isAuthenticated()
+passport.use(
+    new Strategy(async function verify(username, password, cb) {
+        console.log(username);
 
-        // check if user exists
-        if (result.rows.length > 0) {
-            const user = result.rows[0];
-            const storedHashedPassword = user.password;
+        try {
+            // check if user exists
+            const result = await db.query("SELECT * FROM users WHERE email = $1", [username]);
 
-            // compare hashes
-            bcrypt.compare(loginPassword, storedHashedPassword, (error, result) => {
-                if (error) {
-                    console.log("Error comparing passwords: ", error);
-                } else {
-                    if (result) {
-                        res.render("secrets.ejs");
+            if (result.rows.length > 0) {
+                const user = result.rows[0];
+                const storedHashedPassword = user.password;
+
+                // compare hashes
+                bcrypt.compare(password, storedHashedPassword, (error, result) => {
+                    if (error) {
+                        return cb(error);
                     } else {
-                        res.render("Incorrect password.");
+                        if (result) {
+                            // return authenticated user
+                            return cb(null, user);
+                        } else {
+                            return cb(null, false);
+                        }
                     }
-                }
-            });
-        } else {
-            res.send("User not found.");
+                });
+            } else {
+                return cb("User not found.");
+            }
+        } catch (e) {
+            return cb(e);
         }
-    } catch (e) {
-        console.log(e);
-    }
+    })
+);
+
+// save & serializes logged in user data to local storage
+passport.serializeUser((user, cb) => {
+    cb(null, user);
+});
+
+// deserializes user data in local storage
+passport.deserializeUser((user, cb) => {
+    cb(null, user);
 });
 
 // server listening

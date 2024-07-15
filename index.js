@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import passport from "passport";
 import { Strategy } from "passport-local";
+import GoogleStrategy from "passport-google-oauth2";
 
 // init global variables
 const app = express();
@@ -19,7 +20,7 @@ const db = new pg.Client({
     host: process.env.HOST,
     database: process.env.DATABASE,
     password: process.env.PASSWORD,
-    port: 5432,
+    port: process.env.PG_PORT,
 });
 
 // init maintenance
@@ -28,7 +29,7 @@ app.use(express.static("public"));
 
 app.use(
     session({
-        secret: "TOPSECRETWORD",
+        secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: true,
         cookie: {
@@ -52,13 +53,19 @@ app.get("/login", (req, res) => {
     res.render("login.ejs");
 });
 
+app.get("/logout", (req, res) => {
+    req.logout((error) => {
+        if (error) console.log(error);
+        res.redirect("/");
+    });
+});
+
 app.get("/register", (req, res) => {
     res.render("register.ejs");
 });
 
 app.get("/secrets", (req, res) => {
     // check for authenticated user
-    console.log(req.user);
     if (req.isAuthenticated()) {
         res.render("secrets.ejs");
     } else {
@@ -66,9 +73,33 @@ app.get("/secrets", (req, res) => {
     }
 });
 
+// route to google sign on
+app.get(
+    "/auth/google",
+    passport.authenticate("google", {
+        scope: ["profile", "email"],
+    })
+);
+app.get(
+    "/auth/google/secrets",
+    passport.authenticate("google", {
+        successRedirect: "/secrets",
+        failureRedirect: "/login",
+    })
+);
 /*
  * web post routes
  */
+
+// log in users
+app.post(
+    "/login",
+    // middleware remembers logged in users
+    passport.authenticate("local", {
+        successRedirect: "/secrets",
+        failureRedirect: "/login",
+    })
+);
 
 // register users
 app.post("/register", async (req, res) => {
@@ -80,7 +111,7 @@ app.post("/register", async (req, res) => {
         const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
 
         if (result.rows.length > 0) {
-            res.send("Email already exists. Try logging in.");
+            res.redirect("/login");
         } else {
             // password hashing
             bcrypt.hash(password, saltRounds, async (error, hash) => {
@@ -101,21 +132,14 @@ app.post("/register", async (req, res) => {
     }
 });
 
-// log in users
-app.post(
-    "/login",
-    // middleware remembers logged in users
-    passport.authenticate("local", {
-        successRedirect: "/secrets",
-        failureRedirect: "/login",
-    })
-);
+/*
+ *   app helper functions
+ */
 
 // verifies user in session - executed on .isAuthenticated()
 passport.use(
+    "local",
     new Strategy(async function verify(username, password, cb) {
-        console.log(username);
-
         try {
             // check if user exists
             const result = await db.query("SELECT * FROM users WHERE email = $1", [username]);
@@ -125,11 +149,12 @@ passport.use(
                 const storedHashedPassword = user.password;
 
                 // compare hashes
-                bcrypt.compare(password, storedHashedPassword, (error, result) => {
+                bcrypt.compare(password, storedHashedPassword, (error, valid) => {
                     if (error) {
+                        console.error("Error comparing passwords:", err);
                         return cb(error);
                     } else {
-                        if (result) {
+                        if (valid) {
                             // return authenticated user
                             return cb(null, user);
                         } else {
@@ -141,9 +166,40 @@ passport.use(
                 return cb("User not found.");
             }
         } catch (e) {
-            return cb(e);
+            console.log(e);
         }
     })
+);
+
+// allow Google sign on
+passport.use(
+    "google",
+    new GoogleStrategy(
+        {
+            clientID: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            callbackURL: "http://localhost:3000/auth/google/secrets",
+            userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
+        },
+        // store user data
+        async (accessToken, refreshToken, profile, cb) => {
+            try {
+                console.log(profile);
+                const result = await db.query("SELECT * FROM users WHERE email = $1", [profile.email]);
+                // enter new user info into db
+                if (result.rows.length === 0) {
+                    const newUser = await db.query("INSERT INTO users (email, password) VALUES ($1, $2)", [profile.email, "google"]);
+                    return cb(null, newUser.rows[0]);
+                }
+                // user already logged in
+                else {
+                    return cb(null, result.rows[0]);
+                }
+            } catch (err) {
+                return cb(err);
+            }
+        }
+    )
 );
 
 // save & serializes logged in user data to local storage

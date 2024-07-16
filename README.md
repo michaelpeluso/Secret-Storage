@@ -94,6 +94,7 @@ secret-storage/
 │
 ├── .env
 ├── .gitignore
+├── README.md
 ├── index.js
 ├── package-lock.json
 ├── package.json
@@ -124,10 +125,13 @@ Secret Storage uses `passport` for authentication, with both local strategy and 
 ### Local Authentication
 - **Strategy**: `passport-local`
 - **Password Hashing**: `bcrypt`
+  - Passwords are hashed using bcrypt with a specified number of salt rounds to ensure security.
+  - Salting adds random data to the input of the hash function to ensure unique hashes for identical passwords.
 
 ### Google OAuth2 Authentication
 - **Strategy**: `passport-google-oauth2`
-- **Client ID** and **Client Secret** should be configured in the `.env` file.
+  - Allows users to sign in using their Google account credentials.
+  - Requires Google Client ID and Client Secret, which should be configured in the `.env` file.
 
 ## Database
 Secret Storage uses PostgreSQL for storing user data and secrets. The user table schema is as follows:

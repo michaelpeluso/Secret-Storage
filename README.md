@@ -33,11 +33,11 @@ To install and run Secret Storage on your local machine, follow these steps:
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/your-username/Secret Storage.git
+    git clone https://github.com/your-username/secret-storage.git
     ```
 2. Navigate to the project directory:
     ```sh
-    cd Secret Storage
+    cd secret-storage
     ```
 3. Install the dependencies:
     ```sh

@@ -39,6 +39,7 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
+app.set("view engine", "ejs");
 
 db.connect();
 
@@ -64,12 +65,24 @@ app.get("/register", (req, res) => {
     res.render("register.ejs");
 });
 
-app.get("/secrets", (req, res) => {
+app.get("/secrets", async (req, res) => {
     // check for authenticated user
     if (req.isAuthenticated()) {
-        res.render("secrets.ejs");
+        try {
+            // get secret from database
+            const result = await db.query("SELECT secret FROM users WHERE email = $1", [req.user.email]);
+            const secret = result.rows[0].secret;
+
+            if (secret) {
+                res.render("secrets.ejs", { secret: secret });
+            } else {
+                res.render("secrets.ejs", { secret: "You should submit a secret!" });
+            }
+        } catch (e) {
+            console.log(e);
+        }
     } else {
-        res.render("/login");
+        res.render("login.ejs");
     }
 });
 
@@ -87,6 +100,15 @@ app.get(
         failureRedirect: "/login",
     })
 );
+
+app.get("/submit", (req, res) => {
+    if (req.isAuthenticated()) {
+        res.render("submit.ejs");
+    } else {
+        res.redirect("/login");
+    }
+});
+
 /*
  * web post routes
  */
@@ -127,6 +149,17 @@ app.post("/register", async (req, res) => {
                 });
             });
         }
+    } catch (e) {
+        console.log(e);
+    }
+});
+
+// update database with new secret
+app.post("/submit", async (req, res) => {
+    const secret = req.body.secret;
+    try {
+        await db.query("UPDATE users SET secret = $1 WHERE email = $2", [secret, req.user.email]);
+        res.redirect("/secrets");
     } catch (e) {
         console.log(e);
     }
@@ -184,7 +217,6 @@ passport.use(
         // store user data
         async (accessToken, refreshToken, profile, cb) => {
             try {
-                console.log(profile);
                 const result = await db.query("SELECT * FROM users WHERE email = $1", [profile.email]);
                 // enter new user info into db
                 if (result.rows.length === 0) {

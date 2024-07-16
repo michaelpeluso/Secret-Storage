@@ -1,4 +1,4 @@
-# MyApp README
+# Secret Storage README
 
 A simple project providing an in-depth exploration of authentication and security. Topics include user registration, encryption, hashing, salting, cookie and session handling, and OAuth implementations.
 
@@ -18,7 +18,7 @@ A simple project providing an in-depth exploration of authentication and securit
 11. [License](#license)
 
 ## Introduction
-MyApp is a web application that allows users to register, log in, and submit secrets. The app supports local authentication and Google OAuth2 for user authentication. It uses PostgreSQL as the database for storing user information and secrets.
+Secret Storage is a web application that allows users to register, log in, and submit secrets. The app supports local authentication and Google OAuth2 for user authentication. It uses PostgreSQL as the database for storing user information and secrets.
 
 ## Features
 - User registration and login
@@ -29,15 +29,15 @@ MyApp is a web application that allows users to register, log in, and submit sec
 - Securely store and display user secrets
 
 ## Installation
-To install and run MyApp on your local machine, follow these steps:
+To install and run Secret Storage on your local machine, follow these steps:
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/your-username/myapp.git
+    git clone https://github.com/your-username/Secret Storage.git
     ```
 2. Navigate to the project directory:
     ```sh
-    cd myapp
+    cd Secret Storage
     ```
 3. Install the dependencies:
     ```sh
@@ -119,7 +119,7 @@ secrets/
 - `/submit` - Submits a new secret and updates the database.
 
 ## Authentication
-MyApp uses `passport` for authentication, with both local strategy and Google OAuth2 strategy implemented.
+Secret Storage uses `passport` for authentication, with both local strategy and Google OAuth2 strategy implemented.
 
 ### Local Authentication
 - **Strategy**: `passport-local`
@@ -130,7 +130,7 @@ MyApp uses `passport` for authentication, with both local strategy and Google OA
 - **Client ID** and **Client Secret** should be configured in the `.env` file.
 
 ## Database
-MyApp uses PostgreSQL for storing user data and secrets. The user table schema is as follows:
+Secret Storage uses PostgreSQL for storing user data and secrets. The user table schema is as follows:
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,

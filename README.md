@@ -70,7 +70,7 @@ The server will run on port 3000 by default. Open your browser and navigate to `
 ## File Structure
 Here is an overview of the project directory structure:
 ```
-secrets/
+secret-storage/
 │
 ├── node_modules/
 │

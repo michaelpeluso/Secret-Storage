@@ -1,5 +1,7 @@
 # MyApp README
 
+A simple project providing an in-depth exploration of authentication and security. Topics include user registration, encryption, hashing, salting, cookie and session handling, and OAuth implementations.
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Features](#features)

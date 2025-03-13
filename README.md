@@ -1,6 +1,6 @@
 # Secret Storage README
 
-A simple project providing an in-depth exploration of authentication and security. Topics include user registration, encryption, hashing, salting, cookie and session handling, and OAuth implementations.
+Exploratory project designed to deepen understanding of authentication and security practices, utilizing PostgreSQL for data management. Topics include user registration, encryption, hashing, salting, cookie and session handling, and OAuth implementations.
 
 ## Table of Contents
 1. [Introduction](#introduction)
